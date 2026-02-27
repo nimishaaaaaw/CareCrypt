@@ -20,18 +20,16 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Convert port to int and provide a default
-    mysql_port = os.getenv('MYSQL_PORT', '3306')
+    # Use Aiven's specific port 19605
+    mysql_port = os.getenv('MYSQL_PORT', '19605')
     app.config['MYSQL_PORT'] = int(mysql_port)
 
-    # Aiven/Render SSL Configuration
-    # Note: 'MYSQL_SSL_MODE' is the standard key for flask-mysqldb 
+    # Aiven SSL Configuration
     if os.getenv('RENDER'):
+        # Aiven requires SSL. This tells flask-mysqldb to use it.
         app.config['MYSQL_CUSTOM_OPTIONS'] = {"ssl": {"ca": "/etc/ssl/certs/ca-certificates.crt"}}
-        # Alternatively, if your setup uses the newer connector:
-        # app.config['MYSQL_SSL_MODE'] = 'REQUIRED'
 
-    # Initialize extensions with the app
+    # Initialize extensions
     mysql.init_app(app)
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
@@ -45,17 +43,13 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(prescriptions_bp)
 
-    # Load models
     from app import models
-
-    # Setup logger
     setup_logger(app)
 
     @app.errorhandler(429)
     def too_many_requests(e):
         return render_template('429.html'), 429
 
-    # Database Initialization
     from app.db_init import init_db
     init_db(app)
 
