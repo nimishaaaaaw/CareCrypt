@@ -9,8 +9,9 @@ class Config:
     MYSQL_HOST = os.getenv("MYSQL_HOST")
     MYSQL_USER = os.getenv("MYSQL_USER")
     MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
-    FERNET_KEY = os.getenv("FERNET_KEY")
     MYSQL_DB = os.getenv("MYSQL_DB")
+    MYSQL_PORT = int(os.getenv("MYSQL_PORT", 3306))
+    FERNET_KEY = os.getenv("FERNET_KEY")
     UPLOAD_FOLDER = "uploads"
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024
     WTF_CSRF_ENABLED = True

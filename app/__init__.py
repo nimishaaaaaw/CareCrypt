@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template
 from flask_mysqldb import MySQL
 from flask_login import LoginManager
@@ -17,6 +18,9 @@ mail = Mail()
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    # Pass MySQL port explicitly for Aiven
+    app.config['MYSQL_PORT'] = int(os.getenv('MYSQL_PORT', 3306))
 
     mysql.init_app(app)
     login_manager.init_app(app)
@@ -38,7 +42,7 @@ def create_app():
     @app.errorhandler(429)
     def too_many_requests(e):
         return render_template('429.html'), 429
-    
+
     from app.db_init import init_db
     init_db(app)
 
