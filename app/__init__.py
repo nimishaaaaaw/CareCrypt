@@ -23,7 +23,7 @@ def create_app():
 
     # Enable SSL for Aiven only in production
     if os.getenv('RENDER'):
-        app.config['MYSQL_SSL'] = {'ssl_mode': 'REQUIRED'}
+        app.config['MYSQL_SSL'] = True
 
     mysql.init_app(app)
     login_manager.init_app(app)
