@@ -19,8 +19,11 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Pass MySQL port explicitly for Aiven
     app.config['MYSQL_PORT'] = int(os.getenv('MYSQL_PORT', 3306))
+
+    # Enable SSL for Aiven only in production
+    if os.getenv('RENDER'):
+        app.config['MYSQL_SSL'] = {'ssl_mode': 'REQUIRED'}
 
     mysql.init_app(app)
     login_manager.init_app(app)
