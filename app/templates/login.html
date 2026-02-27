@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <h3>Welcome back</h3>
+        <p class="auth-subtitle">Sign in to your CareCrypt account</p>
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label class="form-label">Username or Email</label>
+                <input type="text" name="identifier" class="form-control"
+                       placeholder="Enter username or email" required autofocus>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input type="password" name="password" class="form-control"
+                       placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 mt-1">Sign In</button>
+        </form>
+
+        <div class="auth-divider mt-3">──────────────────</div>
+        <p class="text-center mb-1" style="font-size:0.9rem;">
+            No account? <a href="{{ url_for('auth.register') }}" style="color:var(--green-500); font-weight:500;">Register</a>
+        </p>
+        <p class="text-center mb-0" style="font-size:0.9rem;">
+            <a href="{{ url_for('auth.forgot_password') }}" style="color:var(--gray-400);">Forgot password?</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

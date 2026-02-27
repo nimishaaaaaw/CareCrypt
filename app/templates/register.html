@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card" style="max-width:480px;">
+        <h3>Create Account</h3>
+        <p class="auth-subtitle">Join CareCrypt to securely manage prescriptions</p>
+
+        <form method="POST" id="registerForm" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input type="text" name="username" class="form-control"
+                       value="{{ username }}" placeholder="Choose a username" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control"
+                       value="{{ email }}" placeholder="Enter a valid email" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+                <div class="input-group">
+                    <input type="password" name="password" id="password"
+                           class="form-control" placeholder="Create a password" required minlength="8">
+                    <button type="button" class="btn btn-outline-secondary"
+                            onclick="toggleVisibility('password','eyeIcon1')">
+                        <span id="eyeIcon1">👁</span>
+                    </button>
+                </div>
+                <div class="mt-2">
+                    <div class="progress" style="height:5px;">
+                        <div id="strengthBar" class="progress-bar" style="width:0%;"></div>
+                    </div>
+                    <small id="strengthText" class="text-muted"></small>
+                </div>
+                <ul class="list-unstyled mt-2 small mb-0">
+                    <li id="req-length"  class="text-danger">✗ At least 8 characters</li>
+                    <li id="req-upper"   class="text-danger">✗ At least 1 uppercase letter</li>
+                    <li id="req-special" class="text-danger">✗ At least 1 special character</li>
+                </ul>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Confirm Password</label>
+                <div class="input-group">
+                    <input type="password" name="confirm_password" id="confirm_password"
+                           class="form-control" placeholder="Repeat your password" required>
+                    <button type="button" class="btn btn-outline-secondary"
+                            onclick="toggleVisibility('confirm_password','eyeIcon2')">
+                        <span id="eyeIcon2">👁</span>
+                    </button>
+                </div>
+                <small id="matchText" class="text-muted"></small>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 mt-1">Create Account</button>
+        </form>
+
+        <p class="text-center mt-3 mb-0" style="font-size:0.9rem;">
+            Already have an account?
+            <a href="{{ url_for('auth.login') }}" style="color:var(--green-500); font-weight:500;">Sign in</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleVisibility(fieldId, iconId) {
+    const field = document.getElementById(fieldId);
+    const icon  = document.getElementById(iconId);
+    field.type  = field.type === 'password' ? 'text' : 'password';
+    icon.textContent = field.type === 'password' ? '👁' : '🙈';
+}
+
+const passwordInput = document.getElementById('password');
+const confirmInput  = document.getElementById('confirm_password');
+const strengthBar   = document.getElementById('strengthBar');
+const strengthText  = document.getElementById('strengthText');
+const matchText     = document.getElementById('matchText');
+
+function checkRequirements(password) {
+    const hasLength  = password.length >= 8;
+    const hasUpper   = /[A-Z]/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?\":{}|<>]/.test(password);
+
+    const set = (id, ok, label) => {
+        document.getElementById(id).className = ok ? 'text-success' : 'text-danger';
+        document.getElementById(id).textContent = (ok ? '✓' : '✗') + ' ' + label;
+    };
+    set('req-length',  hasLength,  'At least 8 characters');
+    set('req-upper',   hasUpper,   'At least 1 uppercase letter');
+    set('req-special', hasSpecial, 'At least 1 special character');
+    return { hasLength, hasUpper, hasSpecial };
+}
+
+passwordInput.addEventListener('input', () => {
+    const { hasLength, hasUpper, hasSpecial } = checkRequirements(passwordInput.value);
+    const score = [hasLength, hasUpper, hasSpecial].filter(Boolean).length;
+    const levels = [
+        { w: '0%',   cls: '',           label: '' },
+        { w: '33%',  cls: 'bg-danger',  label: 'Weak' },
+        { w: '66%',  cls: 'bg-warning', label: 'Medium' },
+        { w: '100%', cls: 'bg-success', label: 'Strong' },
+    ];
+    strengthBar.style.width    = levels[score].w;
+    strengthBar.className      = 'progress-bar ' + levels[score].cls;
+    strengthText.textContent   = levels[score].label;
+    if (confirmInput.value) checkMatch();
+});
+
+confirmInput.addEventListener('input', checkMatch);
+
+function checkMatch() {
+    const match = passwordInput.value === confirmInput.value;
+    matchText.textContent = confirmInput.value
+        ? (match ? '✓ Passwords match' : '✗ Passwords do not match') : '';
+    matchText.className = (match ? 'text-success' : 'text-danger') + ' small';
+}
+</script>
+{% endblock %}

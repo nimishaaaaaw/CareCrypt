@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Welcome, {{ current_user.username }}! 👋</h3>
+    <a href="{{ url_for('prescriptions.add_prescription') }}" class="btn btn-primary">+ Add Prescription</a>
+</div>
+
+<!-- Search & Filter Bar -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Search</label>
+                <input type="text" id="searchInput" class="form-control"
+                       placeholder="Patient name or medication...">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">From</label>
+                <input type="date" id="dateFrom" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">To</label>
+                <input type="date" id="dateTo" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                    Clear
+                </button>
+            </div>
+        </div>
+        <small class="text-muted mt-1 d-block">Results update as you type or select dates</small>
+    </div>
+</div>
+
+<!-- Prescriptions Grid -->
+<div id="prescriptionsGrid" class="row">
+    {% if prescriptions %}
+        {% for p in prescriptions %}
+        <div class="col-md-6 mb-3 prescription-card">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">{{ p.patient_name }}</h5>
+                    <p class="mb-1"><strong>Medication:</strong> {{ p.medication }}</p>
+                    <p class="mb-1"><strong>Dosage:</strong> {{ p.dosage }}</p>
+                    {% if p.notes %}
+                    <p class="mb-1"><strong>Notes:</strong> {{ p.notes }}</p>
+                    {% endif %}
+
+                    {% if p.images %}
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        {% for img in p.images %}
+                            {% if img.ext == 'pdf' %}
+                            <a href="{{ url_for('prescriptions.serve_image', image_id=img.id) }}"
+                               target="_blank"
+                               style="height:70px; width:70px; border-radius:6px; border:1px solid #ddd;
+                                      display:flex; flex-direction:column; align-items:center;
+                                      justify-content:center; text-decoration:none; background:#fff5f5;">
+                                <span style="font-size:24px;">📄</span>
+                                <small class="text-danger" style="font-size:10px;">PDF</small>
+                            </a>
+                            {% else %}
+                            <img src="{{ url_for('prescriptions.serve_image', image_id=img.id) }}"
+                                 style="height:70px; width:70px; object-fit:cover; border-radius:6px;
+                                        border:1px solid #ddd; cursor:pointer;"
+                                 alt="Image {{ loop.index }}"
+                                 onclick="openLightbox('{{ url_for('prescriptions.serve_image', image_id=img.id) }}')">
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <p class="text-muted small mt-2">Added: {{ p.created_at.strftime('%d %b %Y') }}</p>
+                    <div class="d-flex gap-2 mt-2">
+                        <a href="{{ url_for('prescriptions.edit_prescription', prescription_id=p.id) }}"
+                           class="btn btn-warning btn-sm">Edit</a>
+                        <button class="btn btn-danger btn-sm"
+                                onclick="confirmDelete({{ p.id }}, '{{ p.patient_name }}')">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div id="emptyMessage" class="col-12">
+            <div class="alert alert-info">No prescriptions yet. Click <strong>+ Add Prescription</strong> to get started.</div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- No Results Message -->
+<div id="noResults" class="alert alert-warning d-none">
+    No prescriptions match your search.
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-danger">🗑 Delete Prescription</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the prescription for
+                    <strong id="modalPatientName"></strong>?
+                </p>
+                <p class="text-muted small">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lightbox Modal -->
+<div class="modal fade" id="lightboxModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark border-0">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close btn-close-white"
+                        data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-2">
+                <img id="lightboxImage" src="" class="img-fluid rounded"
+                     style="max-height: 80vh;" alt="Full View">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const searchInput = document.getElementById('searchInput');
+const dateFrom = document.getElementById('dateFrom');
+const dateTo = document.getElementById('dateTo');
+const grid = document.getElementById('prescriptionsGrid');
+const noResults = document.getElementById('noResults');
+const csrfToken = "{{ csrf_token() }}";
+const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+const lightboxModal = new bootstrap.Modal(document.getElementById('lightboxModal'));
+
+let debounceTimer;
+
+function openLightbox(src) {
+    document.getElementById('lightboxImage').src = src;
+    lightboxModal.show();
+}
+
+function confirmDelete(id, patientName) {
+    document.getElementById('modalPatientName').textContent = patientName;
+    document.getElementById('deleteForm').action = `/delete/${id}`;
+    deleteModal.show();
+}
+
+function clearFilters() {
+    searchInput.value = '';
+    dateFrom.value = '';
+    dateTo.value = '';
+    location.reload();
+}
+
+function triggerSearch() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        const query = searchInput.value.trim();
+        const from = dateFrom.value;
+        const to = dateTo.value;
+
+        if (!query && !from && !to) {
+            location.reload();
+            return;
+        }
+        fetchPrescriptions(query, from, to);
+    }, 300);
+}
+
+searchInput.addEventListener('input', triggerSearch);
+dateFrom.addEventListener('change', triggerSearch);
+dateTo.addEventListener('change', triggerSearch);
+
+function fetchPrescriptions(query, dateFrom, dateTo) {
+    const params = new URLSearchParams();
+    if (query) params.append('q', query);
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+
+    fetch(`/search?${params.toString()}`)
+        .then(res => res.json())
+        .then(data => renderResults(data))
+        .catch(err => console.error('Search error:', err));
+}
+
+function renderResults(data) {
+    grid.innerHTML = '';
+    noResults.classList.add('d-none');
+
+    if (data.length === 0) {
+        noResults.classList.remove('d-none');
+        return;
+    }
+
+    data.forEach(p => {
+        const notesHtml = p.notes
+            ? `<p class="mb-1"><strong>Notes:</strong> ${p.notes}</p>`
+            : '';
+
+        let imagesHtml = '';
+        if (p.images && p.images.length > 0) {
+            imagesHtml = '<div class="d-flex flex-wrap gap-2 mt-3">';
+            p.images.forEach(img => {
+                if (img.ext === 'pdf') {
+                    imagesHtml += `
+                        <a href="/image/${img.id}" target="_blank"
+                           style="height:70px; width:70px; border-radius:6px; border:1px solid #ddd;
+                                  display:flex; flex-direction:column; align-items:center;
+                                  justify-content:center; text-decoration:none; background:#fff5f5;">
+                            <span style="font-size:24px;">📄</span>
+                            <small style="color:#dc3545; font-size:10px;">PDF</small>
+                        </a>`;
+                } else {
+                    imagesHtml += `
+                        <img src="/image/${img.id}"
+                            style="height:70px; width:70px; object-fit:cover; border-radius:6px;
+                                   border:1px solid #ddd; cursor:pointer;"
+                            onclick="openLightbox('/image/${img.id}')"
+                            alt="Image">`;
+                }
+            });
+            imagesHtml += '</div>';
+        }
+
+        const card = document.createElement('div');
+        card.className = 'col-md-6 mb-3';
+        card.innerHTML = `
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">${p.patient_name}</h5>
+                    <p class="mb-1"><strong>Medication:</strong> ${p.medication}</p>
+                    <p class="mb-1"><strong>Dosage:</strong> ${p.dosage}</p>
+                    ${notesHtml}
+                    ${imagesHtml}
+                    <p class="text-muted small mt-2">Added: ${p.created_at}</p>
+                </div>
+            </div>`;
+
+        const btnGroup = document.createElement('div');
+        btnGroup.className = 'd-flex gap-2 mt-2';
+
+        const editBtn = document.createElement('a');
+        editBtn.href = `/edit/${p.id}`;
+        editBtn.className = 'btn btn-warning btn-sm';
+        editBtn.textContent = 'Edit';
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-danger btn-sm';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.onclick = () => confirmDelete(p.id, p.patient_name);
+
+        btnGroup.appendChild(editBtn);
+        btnGroup.appendChild(deleteBtn);
+        card.querySelector('.card-body').appendChild(btnGroup);
+        grid.appendChild(card);
+    });
+}
+</script>
+{% endblock %}
