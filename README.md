@@ -116,7 +116,7 @@ timestamp
 ![Register](screenshots/register.png)
 
 ### 🏠 Dashboard
-![Dashboard](screenshots/Screenshot (2604).png)
+![Dashboard](screenshots/dashboard.png)
 
 ### ➕ Add Prescription
 ![Add Prescription](screenshots/addpres.png)
@@ -129,6 +129,9 @@ timestamp
 
 ### 🔒 Forgot Password
 ![Forgot Password](screenshots/forgotpassword.png)
+
+### ⚠️ Session Timeout
+![Dashboard](screenshots/session.png)
 
 ### 🔐 Encrypted Database
 ![Encrypted DB](screenshots/encrypted.png)
