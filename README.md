@@ -109,46 +109,32 @@ timestamp
 
 ## 📸 Screenshots
 
-### 🔑 Login & Register
-> *Screenshots to add: `screenshots/login.png`, `screenshots/register.png`*
-> 
-> Capture the login page and register page showing the password strength meter in action (fill in a password halfway so the checklist shows mixed ✓ and ✗)
+### 🔑 Login
+![Login](screenshots/login.png)
+
+### 📝 Register
+![Register](screenshots/register.png)
 
 ### 🏠 Dashboard
-> *Screenshot to add: `screenshots/dashboard.png`*
->
-> Add a few prescriptions first, then capture the full dashboard showing prescription cards with thumbnails, the search bar, and date filter
-
-### 🔍 Search & Filter
-> *Screenshot to add: `screenshots/search.png`*
->
-> Type something in the search bar so AJAX results are showing, capture that state
+![Dashboard](screenshots/Screenshot (2604).png)
 
 ### ➕ Add Prescription
-> *Screenshot to add: `screenshots/add.png`*
->
-> Capture the add prescription form with some fields filled in and a file preview showing
+![Add Prescription](screenshots/addpres.png)
 
 ### ✏️ Edit Prescription
-> *Screenshot to add: `screenshots/edit.png`*
->
-> Capture the edit form showing existing image thumbnails with Remove checkboxes
+![Edit Prescription](screenshots/editpres.png)
 
-### 🖼️ Lightbox View
-> *Screenshot to add: `screenshots/lightbox.png`*
->
-> Click an image thumbnail on the dashboard so the dark lightbox modal opens, then screenshot
+### 🗑️ Delete Confirmation
+![Delete](screenshots/delete.png)
 
-### 🔒 Encrypted Database
-> *Screenshot to add: `screenshots/encrypted_db.png`*
->
-> Open MySQL Workbench or terminal, run `SELECT * FROM prescriptions LIMIT 3;` and screenshot — this shows the unreadable BLOB hex data which is a powerful visual
+### 🔒 Forgot Password
+![Forgot Password](screenshots/forgotpassword.png)
+
+### 🔐 Encrypted Database
+![Encrypted DB](screenshots/encrypted.png)
 
 ### 📋 Audit Log
-> *Screenshot to add: `screenshots/audit_log.png`*
->
-> Run `SELECT username, action, details, ip_address, timestamp FROM audit_logs ORDER BY timestamp DESC LIMIT 10;` and screenshot the clean table output
-
+![Audit Log](screenshots/audit.png)
 ---
 
 ## 🖥️ Run Locally
