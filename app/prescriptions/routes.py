@@ -1,6 +1,7 @@
 import os
 import uuid
-import google.generativeai as genai
+from google import genai
+
 from flask import render_template, request, redirect, url_for, flash, current_app, send_file, abort, jsonify, session
 from flask_login import login_required, current_user
 from app.prescriptions import prescriptions_bp
@@ -307,9 +308,11 @@ Prescription details:
 Keep it professional, factual, and under 80 words total. Do not add any extra headings or bullet points."""
 
     try:
-        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(prompt)
+        client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+        response = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=prompt
+        )
         summary = response.text.strip()
 
         log_audit('PRESCRIPTION_SUMMARIZED', f'AI summary generated for prescription ID: {prescription_id}')
