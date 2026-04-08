@@ -11,6 +11,7 @@ class Config:
     MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
     MYSQL_DB = os.getenv("MYSQL_DB")
     MYSQL_PORT = int(os.getenv("MYSQL_PORT", 3306))
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
     FERNET_KEY = os.getenv("FERNET_KEY")
     UPLOAD_FOLDER = "uploads"
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024

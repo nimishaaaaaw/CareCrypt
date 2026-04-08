@@ -51,17 +51,13 @@
                         {% for img in p.images %}
                             {% if img.ext == 'pdf' %}
                             <a href="{{ url_for('prescriptions.serve_image', image_id=img.id) }}"
-                               target="_blank"
-                               style="height:70px; width:70px; border-radius:6px; border:1px solid #ddd;
-                                      display:flex; flex-direction:column; align-items:center;
-                                      justify-content:center; text-decoration:none; background:#fff5f5;">
+                               target="_blank" class="pdf-thumb">
                                 <span style="font-size:24px;">📄</span>
                                 <small class="text-danger" style="font-size:10px;">PDF</small>
                             </a>
                             {% else %}
                             <img src="{{ url_for('prescriptions.serve_image', image_id=img.id) }}"
-                                 style="height:70px; width:70px; object-fit:cover; border-radius:6px;
-                                        border:1px solid #ddd; cursor:pointer;"
+                                 class="thumb"
                                  alt="Image {{ loop.index }}"
                                  onclick="openLightbox('{{ url_for('prescriptions.serve_image', image_id=img.id) }}')">
                             {% endif %}
@@ -70,13 +66,23 @@
                     {% endif %}
 
                     <p class="text-muted small mt-2">Added: {{ p.created_at.strftime('%d %b %Y') }}</p>
-                    <div class="d-flex gap-2 mt-2">
+
+                    <div class="d-flex gap-2 mt-2 flex-wrap">
                         <a href="{{ url_for('prescriptions.edit_prescription', prescription_id=p.id) }}"
                            class="btn btn-warning btn-sm">Edit</a>
                         <button class="btn btn-danger btn-sm"
                                 onclick="confirmDelete({{ p.id }}, '{{ p.patient_name }}')">
                             Delete
                         </button>
+                        <button class="btn btn-sm btn-summarize"
+                                onclick="summarize({{ p.id }}, this)">
+                            🤖 Summarize
+                        </button>
+                    </div>
+
+                    <!-- Summary output box -->
+                    <div id="summary-{{ p.id }}" class="summary-box d-none mt-3">
+                        <div class="summary-content"></div>
                     </div>
                 </div>
             </div>
@@ -173,7 +179,6 @@ function triggerSearch() {
         const query = searchInput.value.trim();
         const from = dateFrom.value;
         const to = dateTo.value;
-
         if (!query && !from && !to) {
             location.reload();
             return;
@@ -198,6 +203,51 @@ function fetchPrescriptions(query, dateFrom, dateTo) {
         .catch(err => console.error('Search error:', err));
 }
 
+function summarize(id, btn) {
+    const summaryBox = document.getElementById(`summary-${id}`);
+    const summaryContent = summaryBox.querySelector('.summary-content');
+
+    // Toggle off if already showing
+    if (!summaryBox.classList.contains('d-none')) {
+        summaryBox.classList.add('d-none');
+        btn.textContent = '🤖 Summarize';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating...';
+
+    fetch(`/summarize/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            summaryContent.innerHTML = `<span class="text-danger">⚠️ ${data.error}</span>`;
+        } else {
+            summaryContent.innerHTML = data.summary
+                .replace(/Patient:/g, '<strong>Patient:</strong>')
+                .replace(/Medication:/g, '<strong>Medication:</strong>')
+                .replace(/Dosage:/g, '<strong>Dosage:</strong>')
+                .replace(/Summary:/g, '<strong>Summary:</strong>')
+                .replace(/\n/g, '<br>');
+        }
+        summaryBox.classList.remove('d-none');
+        btn.disabled = false;
+        btn.textContent = '🤖 Summarize';
+    })
+    .catch(() => {
+        summaryContent.innerHTML = '<span class="text-danger">⚠️ Something went wrong.</span>';
+        summaryBox.classList.remove('d-none');
+        btn.disabled = false;
+        btn.textContent = '🤖 Summarize';
+    });
+}
+
 function renderResults(data) {
     grid.innerHTML = '';
     noResults.classList.add('d-none');
@@ -218,18 +268,13 @@ function renderResults(data) {
             p.images.forEach(img => {
                 if (img.ext === 'pdf') {
                     imagesHtml += `
-                        <a href="/image/${img.id}" target="_blank"
-                           style="height:70px; width:70px; border-radius:6px; border:1px solid #ddd;
-                                  display:flex; flex-direction:column; align-items:center;
-                                  justify-content:center; text-decoration:none; background:#fff5f5;">
+                        <a href="/image/${img.id}" target="_blank" class="pdf-thumb">
                             <span style="font-size:24px;">📄</span>
                             <small style="color:#dc3545; font-size:10px;">PDF</small>
                         </a>`;
                 } else {
                     imagesHtml += `
-                        <img src="/image/${img.id}"
-                            style="height:70px; width:70px; object-fit:cover; border-radius:6px;
-                                   border:1px solid #ddd; cursor:pointer;"
+                        <img src="/image/${img.id}" class="thumb"
                             onclick="openLightbox('/image/${img.id}')"
                             alt="Image">`;
                 }
@@ -252,7 +297,7 @@ function renderResults(data) {
             </div>`;
 
         const btnGroup = document.createElement('div');
-        btnGroup.className = 'd-flex gap-2 mt-2';
+        btnGroup.className = 'd-flex gap-2 mt-2 flex-wrap';
 
         const editBtn = document.createElement('a');
         editBtn.href = `/edit/${p.id}`;
@@ -264,9 +309,21 @@ function renderResults(data) {
         deleteBtn.textContent = 'Delete';
         deleteBtn.onclick = () => confirmDelete(p.id, p.patient_name);
 
+        const summarizeBtn = document.createElement('button');
+        summarizeBtn.className = 'btn btn-sm btn-summarize';
+        summarizeBtn.textContent = '🤖 Summarize';
+        summarizeBtn.onclick = function() { summarize(p.id, this); };
+
+        const summaryBox = document.createElement('div');
+        summaryBox.id = `summary-${p.id}`;
+        summaryBox.className = 'summary-box d-none mt-3';
+        summaryBox.innerHTML = '<div class="summary-content"></div>';
+
         btnGroup.appendChild(editBtn);
         btnGroup.appendChild(deleteBtn);
+        btnGroup.appendChild(summarizeBtn);
         card.querySelector('.card-body').appendChild(btnGroup);
+        card.querySelector('.card-body').appendChild(summaryBox);
         grid.appendChild(card);
     });
 }

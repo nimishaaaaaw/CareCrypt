@@ -375,6 +375,43 @@
             .auth-card { padding: 1.75rem 1.25rem; }
             .page-wrapper { padding: 1.25rem 1rem; }
         }
+        /* ── AI Summarize button ── */
+        .btn-summarize {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            border: none;
+            border-radius: 9px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-summarize:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+            color: white;
+        }
+
+        .btn-summarize:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── Summary output box ── */
+        .summary-box {
+            background: linear-gradient(135deg, #f0f4ff, #faf5ff);
+            border: 1px solid #c7d2fe;
+            border-radius: 10px;
+            padding: 1rem;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            color: #3730a3;
+            animation: fadeUp 0.3s ease;
+        }
+
+        .summary-box strong {
+            color: #4f46e5;
+        }
     </style>
 </head>
 <body>

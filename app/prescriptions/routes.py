@@ -1,5 +1,6 @@
 import os
 import uuid
+import google.generativeai as genai
 from flask import render_template, request, redirect, url_for, flash, current_app, send_file, abort, jsonify, session
 from flask_login import login_required, current_user
 from app.prescriptions import prescriptions_bp
@@ -16,7 +17,6 @@ def allowed_file(filename):
 
 
 def save_encrypted_file(file, upload_folder):
-    """Encrypt and save a file, return stored filename and extension."""
     ext = file.filename.rsplit('.', 1)[1].lower()
     filename = f"{uuid.uuid4().hex}.enc"
     os.makedirs(upload_folder, exist_ok=True)
@@ -39,21 +39,19 @@ def dashboard():
 
     prescriptions = []
     for row in rows:
-        # Fetch all images for this prescription
         cur.execute(
             "SELECT id, filename, original_ext FROM prescription_images "
             "WHERE prescription_id = %s",
             (row[0],)
         )
         images = cur.fetchall()
-
         prescriptions.append({
             'id': row[0],
             'patient_name': decrypt(row[1]),
             'medication': decrypt(row[2]),
             'dosage': decrypt(row[3]),
             'notes': decrypt(row[4]) if row[4] else '',
-            'image_path': row[5],  # legacy single image
+            'image_path': row[5],
             'images': [{'id': img[0], 'ext': img[2]} for img in images],
             'created_at': row[6]
         })
@@ -87,7 +85,6 @@ def add_prescription():
             mysql.connection.commit()
             prescription_id = cur.lastrowid
 
-            # Save each uploaded image
             upload_folder = current_app.config['UPLOAD_FOLDER']
             for image_file in image_files:
                 if image_file and allowed_file(image_file.filename):
@@ -155,7 +152,6 @@ def edit_prescription(prescription_id):
         image_files = request.files.getlist('images')
         remove_image_ids = request.form.getlist('remove_image')
 
-        # Remove selected images
         for img_id in remove_image_ids:
             cur.execute(
                 "SELECT filename FROM prescription_images WHERE id = %s AND prescription_id = %s",
@@ -168,7 +164,6 @@ def edit_prescription(prescription_id):
                     os.remove(filepath)
                 cur.execute("DELETE FROM prescription_images WHERE id = %s", (img_id,))
 
-        # Add new images
         upload_folder = current_app.config['UPLOAD_FOLDER']
         for image_file in image_files:
             if image_file and allowed_file(image_file.filename):
@@ -206,7 +201,6 @@ def edit_prescription(prescription_id):
 @login_required
 def serve_image(image_id):
     cur = mysql.connection.cursor()
-    # Verify image belongs to current user via join
     cur.execute(
         "SELECT pi.filename, pi.original_ext FROM prescription_images pi "
         "JOIN prescriptions p ON pi.prescription_id = p.id "
@@ -253,7 +247,6 @@ def delete_prescription(prescription_id):
     row = cur.fetchone()
 
     if row:
-        # Delete all images from prescription_images table
         cur.execute(
             "SELECT filename FROM prescription_images WHERE prescription_id = %s",
             (prescription_id,)
@@ -275,6 +268,56 @@ def delete_prescription(prescription_id):
 
     cur.close()
     return redirect(url_for('prescriptions.dashboard'))
+
+
+@prescriptions_bp.route('/summarize/<int:prescription_id>', methods=['POST'])
+@login_required
+def summarize_prescription(prescription_id):
+    cur = mysql.connection.cursor()
+    cur.execute(
+        "SELECT patient_name, medication, dosage, notes FROM prescriptions "
+        "WHERE id = %s AND user_id = %s",
+        (prescription_id, current_user.id)
+    )
+    row = cur.fetchone()
+    cur.close()
+
+    if not row:
+        return jsonify({'error': 'Prescription not found'}), 404
+
+    patient_name = decrypt(row[0])
+    medication   = decrypt(row[1])
+    dosage       = decrypt(row[2])
+    notes        = decrypt(row[3]) if row[3] else 'None'
+
+    prompt = f"""You are a clinical assistant helping a doctor quickly understand a prescription.
+
+Given the following prescription details, provide a concise plain-English summary in exactly this format:
+
+Patient: {patient_name}
+Medication: {medication} | Dosage: {dosage}
+Summary: [2-3 sentences: what this medication is for, key instructions, and one important warning if relevant]
+
+Prescription details:
+- Patient: {patient_name}
+- Medication: {medication}
+- Dosage: {dosage}
+- Notes: {notes}
+
+Keep it professional, factual, and under 80 words total. Do not add any extra headings or bullet points."""
+
+    try:
+        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        summary = response.text.strip()
+
+        log_audit('PRESCRIPTION_SUMMARIZED', f'AI summary generated for prescription ID: {prescription_id}')
+        return jsonify({'summary': summary})
+
+    except Exception as e:
+        current_app.logger.error(f"GEMINI ERROR | {str(e)}")
+        return jsonify({'error': 'Failed to generate summary. Please try again.'}), 500
 
 
 @prescriptions_bp.route('/search')
@@ -300,11 +343,9 @@ def search():
         notes = decrypt(row[4]) if row[4] else ''
         created_at = row[5]
 
-        # Text filter
         if query and query not in patient_name.lower() and query not in medication.lower():
             continue
 
-        # Date range filter
         if date_from:
             try:
                 from_date = datetime.strptime(date_from, '%Y-%m-%d').date()
