@@ -1,6 +1,6 @@
 import os
 import uuid
-from google import genai
+from groq import Groq
 from flask import render_template, request, redirect, url_for, flash, current_app, send_file, abort, jsonify, session
 from flask_login import login_required, current_user
 from app.prescriptions import prescriptions_bp
