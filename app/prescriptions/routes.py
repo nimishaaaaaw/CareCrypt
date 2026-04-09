@@ -307,17 +307,18 @@ Prescription details:
 Keep it professional, factual, and under 80 words total. Do not add any extra headings or bullet points."""
 
     try:
-        client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
-        response = client.models.generate_content(
-            model='models/gemini-2.0-flash',
-            contents=prompt
+        client = Groq(api_key=os.getenv('GROQ_API_KEY'))
+        response = client.chat.completions.create(
+            model='llama-3.1-8b-instant',
+            messages=[{'role': 'user', 'content': prompt}],
+            max_tokens=200
         )
-        summary = response.text.strip()
+        summary = response.choices[0].message.content.strip()
         log_audit('PRESCRIPTION_SUMMARIZED', f'AI summary generated for prescription ID: {prescription_id}')
         return jsonify({'summary': summary})
 
     except Exception as e:
-        current_app.logger.error(f"GEMINI ERROR | {str(e)}")
+        current_app.logger.error(f"GROQ ERROR | {str(e)}")
         return jsonify({'error': 'Failed to generate summary. Please try again.'}), 500
 
 
